@@ -21,7 +21,7 @@ The analysis is strictly modularized into 6 sequential R scripts to ensure 100% 
   - **`01_Main_Pipeline_ST003798.R`**: The core analytical engine. Executes data preprocessing, LASSO-Random Forest extreme-phenotype training, SHAP interpretation, Pseudotime trajectory inference, and cross-cohort multi-omic (TCGA & scRNA-seq) target validation. (Generates Fig 1-9).
   - **`02_Supp_Basic_Metrics.R`**: Calculates comprehensive diagnostic metrics (Sensitivity, Specificity, PPV, NPV) for the independent test set.
   - **`03_Supp_Advanced_Metrics_DCA.R`**: Performs advanced clinical utility assessments, including Calibration Curves, Decision Curve Analysis (DCA), and 1,000x Bootstrap internal validation.
-  - **`04_Supp_...R`**: *(Note: Please rename this description based on your actual Script 04, e.g., Supplementary visualizations or specific data processing).*
+  - **`04_Supp_Feature_Extraction_and_AUC_CI.R`**: Extracts the final LASSO-selected lipidomic features and rigorously computes the exact 95% Confidence Intervals (CI) for the AUC metrics to ensure absolute statistical robustness.
   - **`05_Supp_Model_Comparisons_Table_S5.R`**: Provides algorithmic justification by comparing the Extreme-Phenotype RF framework against "Mixed" models and other mainstream classifiers (XGBoost, SVM, Logistic Regression).
   - **`06_Supp_Final_Stats_and_TCGA_Covariates.R`**: Executes the ultimate statistical defense, including Hartigan's dip test for adenoma bimodality, external independent AUC calculation for CE(20:4), and Age/Sex-adjusted Multivariate Logistic Regression (GLM) for TCGA cohorts.
 
