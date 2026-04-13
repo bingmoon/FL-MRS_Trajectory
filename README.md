@@ -1,29 +1,29 @@
 # Machine Learning-Driven Fecal Lipidomic Trajectory (FL-MRS)
 
-[![Journal](https://img.shields.io/badge/Submitted_to-Theranostics-red.svg)]()
+[![Journal](https://img.shields.io/badge/Submitted_to-Computers_in_Biology_and_Medicine-blue.svg)]()
 [![Language](https://img.shields.io/badge/Language-R_4.3.1-blue.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)]()
 
 This repository contains the official computational framework and reproducible analytical scripts for the manuscript:  
-**"Machine learning-driven fecal lipidomic trajectory identifies the COX-2/CE(20:4) axis as a key early molecular correlate of colorectal adenoma-carcinoma transformation."**
+**"Machine Learning Analysis of Fecal Lipidomics Suggests a COX-2/CE(20:4)-Associated Signature in Colorectal Adenoma-Carcinoma Transformation."**
 
 ## 📌 Project Overview
-Accurately stratifying the malignant potential of histologically benign colorectal adenomas remains a major clinical challenge. To address this, we developed a novel **Extreme-Phenotype Machine Learning Framework** that establishes a pure diagnostic baseline by deliberately blinding the model to transitional adenoma stages during training. 
+Accurately stratifying the malignant potential of histologically benign colorectal adenomas remains a major clinical challenge. To address this, we developed an **Extreme-Phenotype Machine Learning Framework** that establishes a robust diagnostic baseline by deliberately excluding transitional adenoma stages during the model training phase. 
 
-By projecting unseen adenomas onto this baseline and calculating the **Fecal Lipidomic Malignancy Risk Score (FL-MRS)**, we mathematically unmasked hidden heterogeneity, revealing that **53.4% of adenomas already harbor a high-risk, CRC-like lipidomic signature**. 
+By projecting unseen adenomas onto this baseline and calculating the **Fecal Lipidomic Malignancy Risk Score (FL-MRS)**, we computationally characterized the underlying disease heterogeneity, revealing that **53.4% of histologically benign adenomas exhibit elevated FL-MRS scores approaching those of overt CRC patients**. 
 
-Integration of Explainable AI (TreeSHAP), pseudotime trajectory inference, and multi-omic validation (bulk & scRNA-seq) further pinpointed the **COX-2/CE(20:4) axis** as the primary driver of this early inflammatory burst within the Tumor Microenvironment (TME), providing a crucial temporal window for NSAID-based chemoprevention.
+Integration of Explainable AI (TreeSHAP), pseudotime trajectory inference, and cross-cohort multi-omic mapping (bulk & scRNA-seq) further highlighted the **COX-2/CE(20:4) axis** as a prominent feature associated with early stromal/myeloid inflammatory changes within the Tumor Microenvironment (TME). Overall, our FL-MRS system provides a hypothesis-generating computational approach that may inform future prospective studies on early interventions, such as NSAID-based chemoprevention.
 
 ## 📂 Repository Structure & Reproducible Pipeline
 The analysis is strictly modularized into 6 sequential R scripts to ensure 100% reproducibility. **Please execute them in numerical order.**
 
 - `Scripts/`
-  - **`01_Main_Pipeline_ST003798.R`**: The core analytical engine. Executes data preprocessing, LASSO-Random Forest extreme-phenotype training, SHAP interpretation, Pseudotime trajectory inference, and cross-cohort multi-omic (TCGA & scRNA-seq) target validation. (Generates Fig 1-9).
+  - **`01_Main_Pipeline_ST003798.R`**: The core analytical engine. Executes data preprocessing, LASSO-Random Forest extreme-phenotype training, SHAP interpretation, Pseudotime trajectory inference, and cross-cohort multi-omic (TCGA & scRNA-seq) target validation. (Generates the core data-driven figures).
   - **`02_Supp_Basic_Metrics.R`**: Calculates comprehensive diagnostic metrics (Sensitivity, Specificity, PPV, NPV) for the independent test set.
   - **`03_Supp_Advanced_Metrics_DCA.R`**: Performs advanced clinical utility assessments, including Calibration Curves, Decision Curve Analysis (DCA), and 1,000x Bootstrap internal validation.
   - **`04_Supp_Feature_Extraction_and_AUC_CI.R`**: Extracts the final LASSO-selected lipidomic features and rigorously computes the exact 95% Confidence Intervals (CI) for the AUC metrics to ensure absolute statistical robustness.
   - **`05_Supp_Model_Comparisons_Table_S5.R`**: Provides algorithmic justification by comparing the Extreme-Phenotype RF framework against "Mixed" models and other mainstream classifiers (XGBoost, SVM, Logistic Regression).
-  - **`06_Supp_Final_Stats_and_TCGA_Covariates.R`**: Executes the ultimate statistical defense, including Hartigan's dip test for adenoma bimodality, external independent AUC calculation for CE(20:4), and Age/Sex-adjusted Multivariate Logistic Regression (GLM) for TCGA cohorts.
+  - **`06_Supp_Final_Stats_and_TCGA_Covariates.R`**: Executes rigorous statistical evaluations, including Hartigan's dip test for adenoma bimodality, external independent AUC calculation for CE(20:4), and Age/Sex-adjusted Multivariate Logistic Regression (GLM) for TCGA cohorts.
 
 - `Data/`: Contains the core pre-processed fecal lipidomic matrices required to reproduce the machine learning framework.
 
