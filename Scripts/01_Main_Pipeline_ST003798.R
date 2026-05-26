@@ -167,9 +167,10 @@ lasso_cv <- cv.glmnet(X_train, Y_train, family = "binomial", alpha = 1, nfolds =
 best_lambda <- lasso_cv$lambda.1se
 
 # 提取在最佳 Lambda 下保留的特征 (系数不为 0 的代谢物)
-lasso_coef <- predict(lasso_cv, type = "nonzero", s = best_lambda)
-selected_indices <- lasso_coef[,1]
-selected_features <- colnames(X_train)[selected_indices]
+lasso_coef_matrix <- predict(lasso_cv, type = "coef", s = best_lambda)
+# 直接根据非零系数提取特征名，并安全剔除模型的截距项 (Intercept)
+selected_features <- rownames(lasso_coef_matrix)[which(lasso_coef_matrix[, 1] != 0)]
+selected_features <- setdiff(selected_features, "(Intercept)")
 
 cat(sprintf("\n🎯 LASSO 严格筛选完毕！从 %d 个脂质特征中，筛选出了 %d 个最强标志物：\n", 
             ncol(X_train), length(selected_features)))
@@ -247,20 +248,28 @@ cat("✅ 模型训练完成！\n")
 # ==========================================
 # 独立测试集验证 (Test Set) & 高级 ROC 曲线绘制
 # ==========================================
-cat("🔮 正在将模型应用于 30% 独立盲测测试集...\n")
+cat("🔮 正在评估模型并计算独立测试集诊断效能...\n")
 
-# 提取测试集特征并预测“恶性概率” (0到1之间的分数)
+# ==================== 修复点：阻断测试集数据泄露 ====================
+# 1. 严格在训练集的 OOB (袋外) 预测中寻找最佳 cutoff，绝对不看测试集标签！
+train_prob_oob <- rf_model$votes[, "Colorectal Cancer"]
+roc_train <- roc(train_data$Group, train_prob_oob, 
+                 levels = c("Healthy Control", "Colorectal Cancer"), 
+                 direction = "<", quiet = TRUE)
+# 获取绝对干净的 Cutoff
+best_cutoff <- coords(roc_train, "best", ret = "threshold", transpose = FALSE)$threshold[1]
+
+# 2. 正常预测测试集，评估 AUC (AUC不依赖cutoff，所以独立计算)
 X_test_rf <- test_data[, selected_features, drop = FALSE]
 test_prob <- predict(rf_model, newdata = X_test_rf, type = "prob")[, "Colorectal Cancer"]
 
-# 计算 ROC 与 AUC
 roc_obj <- roc(test_data$Group, test_prob, 
                levels = c("Healthy Control", "Colorectal Cancer"), 
                direction = "<", quiet = TRUE)
 
 auc_val <- auc(roc_obj)
 ci_val <- ci.auc(roc_obj)
-best_cutoff <- coords(roc_obj, "best", ret = "threshold")$threshold[1]
+# ====================================================================
 
 cat(sprintf("🎯 测试集诊断表现:\n - AUC = %.3f\n - 95%% CI: [%.3f - %.3f]\n - 最佳风险截断分: %.3f\n", 
             auc_val, ci_val[1], ci_val[3], best_cutoff))
@@ -506,7 +515,8 @@ p_volcano <- ggplot(diff_res, aes(x = Log2FC, y = NegLog10P)) +
                   aes(label = Feature), size = 4, fontface = "italic", 
                   box.padding = 0.5, point.padding = 0.5, segment.color = "grey50", max.overlaps = 20) +
   theme_bw(base_size = 15) +
-  labs(title = "Metabolic Drivers of High-Risk Adenoma",
+  # ==================== 修复点：降级标题 ====================
+  labs(title = "Metabolic Signatures of High-Risk Adenoma",
        subtitle = "High-Risk vs Low-Risk Subtypes (Based on ML Risk Score)",
        x = "Log2 Fold Change", y = "-Log10(P-value)") +
   theme(legend.position = "bottom",
@@ -629,7 +639,6 @@ suppressMessages({
 cat("\n🌐 [Step 8] 正在连接美国 TCGA 数据库，请求 COAD (结直肠癌) 队列数据...\n")
 
 # 1. 构造 TCGA 查询请求 (下载 RNA-Seq 基因表达数据)
-# 为了速度和精准，我们只下载包含了 Normal 和 Tumor 的配对或大队列 Transcriptome Profiling
 query <- GDCquery(
   project = "TCGA-COAD",
   data.category = "Transcriptome Profiling",
@@ -645,57 +654,57 @@ tcga_data <- GDCprepare(query)
 
 cat("✅ 数据下载并组装完成！\n")
 
-# 3. 提取靶向基因表达量 (FPKM-UQ 或 TPM，此处我们提取经过标准化的 tpm_unstrand)
-# 我们的目标靶点:
-# - SOAT1 (ENSG00000057252): 负责合成胆固醇酯 (CE)
-# - PTGS2 / COX-2 (ENSG00000073756): 负责花生四烯酸 (20:4) 的促炎代谢
+# 3. 提取靶向基因表达量
 target_genes <- c("SOAT1", "PTGS2", "PLA2G4A")
-
-# 获取行(基因)信息
 gene_info <- as.data.frame(rowData(tcga_data))
-# 匹配我们要的基因
 gene_match <- gene_info %>% filter(gene_name %in% target_genes)
-
-# 提取 TPM 表达矩阵 (更适合跨样本直接比较)
 tpm_matrix <- assay(tcga_data, "tpm_unstrand")
-
-# 过滤出我们的靶基因
 target_tpm <- tpm_matrix[rownames(tpm_matrix) %in% rownames(gene_match), ]
 rownames(target_tpm) <- gene_match$gene_name[match(rownames(target_tpm), rownames(gene_match))]
 
 # 4. 组装作图数据框
-# 获取样本的临床分组 (Normal vs Tumor)
 sample_info <- data.frame(
   SampleID = colnames(target_tpm),
   Type = tcga_data$sample_type
 )
-
-# 清洗标签名称
 sample_info$Type <- ifelse(sample_info$Type == "Solid Tissue Normal", "Normal", "Tumor")
 sample_info$Type <- factor(sample_info$Type, levels = c("Normal", "Tumor"))
 
-# 转置表达矩阵并合并
 df_expr <- as.data.frame(t(target_tpm))
 df_expr$SampleID <- rownames(df_expr)
 df_plot <- df_expr %>%
   left_join(sample_info, by = "SampleID") %>%
   pivot_longer(cols = all_of(target_genes), names_to = "Gene", values_to = "TPM")
-
-# Log2 转换以便作图 (Log2(TPM + 1))
 df_plot$Log2TPM <- log2(df_plot$TPM + 1)
 
 # 5. 绘制顶刊级 TCGA 多组学验证箱线图
 cat("🎨 正在绘制靶点基因表达跨组学验证图...\n")
-
-# 定义比较组
 comparisons_list <- list(c("Normal", "Tumor"))
 
 p_tcga <- ggplot(df_plot, aes(x = Type, y = Log2TPM, fill = Type)) +
-  # 绘制带缺口和抖动点的现代箱线图
   geom_boxplot(outlier.shape = NA, alpha = 0.7, color = "black", size = 0.6, width = 0.5) +
   geom_jitter(shape = 21, size = 1.5, alpha = 0.5, width = 0.15, color = "black", stroke = 0.2) +
+  facet_wrap(~ Gene, scales = "free_y", nrow = 1) +
+  stat_compare_means(comparisons = comparisons_list, method = "wilcox.test", 
+                     label = "p.signif", tip.length = 0.02, size = 5) +
+  scale_fill_manual(values = c("Normal" = "#00A087", "Tumor" = "#E64B35")) +
+  theme_bw(base_size = 15) +
+  labs(title = "Transcriptomic Validation of Lipidomic Targets (TCGA-COAD)",
+       subtitle = "Overexpression of key enzymes associated with CE(20:4) accumulation in Colorectal Cancer",
+       x = "Tissue Type", y = "Expression Level (Log2 TPM + 1)") +
+  theme(legend.position = "none",
+        plot.title = element_text(face = "bold", hjust = 0.5, size = 16),
+        plot.subtitle = element_text(hjust = 0.5, size = 11, color = "grey40", margin = ggplot2::margin(b=15)),
+        strip.text = element_text(face = "bold", size = 14, color = "white"),
+        strip.background = element_rect(fill = "grey30", color = "black"),
+        axis.text.x = element_text(face = "bold", color = "black", size = 13),
+        axis.title.y = element_text(face = "bold"))
 
-  # ==========================================================
+ggsave("Figure_7_TCGA_Multiomics_Validation.pdf", p_tcga, width = 8, height = 5, dpi = 300)
+cat("✅ 大功告成！TCGA 跨组学验证图已保存为: Figure_7_TCGA_Multiomics_Validation.pdf\n")
+
+
+# ==========================================================
 # 提取 TCGA 验证的精确统计学数据，生成高分期刊必备的 Supplementary Table
 # ==========================================================
 cat("\n📊 正在计算精确统计量并导出 CSV 文件...\n")
@@ -711,23 +720,14 @@ tcga_stats <- data.frame(
 )
 
 for (g in target_genes) {
-  # 提取该基因的 Normal 和 Tumor 表达量 (Log2 TPM)
   val_normal <- df_plot %>% filter(Gene == g, Type == "Normal") %>% pull(Log2TPM)
   val_tumor  <- df_plot %>% filter(Gene == g, Type == "Tumor") %>% pull(Log2TPM)
-  
-  # 计算均值
   mean_n <- mean(val_normal, na.rm = TRUE)
   mean_t <- mean(val_tumor, na.rm = TRUE)
-  
-  # Wilcoxon 检验获取 P 值
   p_val <- wilcox.test(val_tumor, val_normal, exact = FALSE)$p.value
-  
-  # 判断显著性星号
   sig <- ifelse(p_val < 0.001, "***", 
                 ifelse(p_val < 0.01, "**", 
                        ifelse(p_val < 0.05, "*", "ns")))
-  
-  # 记录结果
   tcga_stats <- rbind(tcga_stats, data.frame(
     Gene = g,
     Mean_Normal = round(mean_n, 3),
@@ -738,36 +738,10 @@ for (g in target_genes) {
   ))
 }
 
-# 导出为 CSV
 write.csv(tcga_stats, file = "Table_S1_TCGA_Validation_Stats.csv", row.names = FALSE)
 cat("✅ 完美！底层统计数据已成功导出为: Table_S1_TCGA_Validation_Stats.csv\n")
 
-
-  # 分面展示不同的基因
-  facet_wrap(~ Gene, scales = "free_y", nrow = 1) +
   
-  # 添加显著性 P 值
-  stat_compare_means(comparisons = comparisons_list, method = "wilcox.test", 
-                     label = "p.signif", tip.length = 0.02, size = 5) +
-  
-  # 高级配色 (绿色=正常, 红色=肿瘤)
-  scale_fill_manual(values = c("Normal" = "#00A087", "Tumor" = "#E64B35")) +
-  
-  # 主题排版
-  theme_bw(base_size = 15) +
-  labs(title = "Transcriptomic Validation of Lipidomic Targets (TCGA-COAD)",
-       subtitle = "Overexpression of key enzymes driving CE(20:4) accumulation in Colorectal Cancer",
-       x = "Tissue Type", y = "Expression Level (Log2 TPM + 1)") +
-  theme(legend.position = "none",
-        plot.title = element_text(face = "bold", hjust = 0.5, size = 16),
-        plot.subtitle = element_text(hjust = 0.5, size = 11, color = "grey40", margin = ggplot2::margin(b=15)),
-        strip.text = element_text(face = "bold", size = 14, color = "white"),
-        strip.background = element_rect(fill = "grey30", color = "black"),
-        axis.text.x = element_text(face = "bold", color = "black", size = 13),
-        axis.title.y = element_text(face = "bold"))
-
-ggsave("Figure_7_TCGA_Multiomics_Validation.pdf", p_tcga, width = 8, height = 5, dpi = 300)
-cat("✅ 大功告成！TCGA 跨组学验证图已保存为: Figure_7_TCGA_Multiomics_Validation.pdf\n")
 
 # ==========================================================
 # Step 9: 靶向外部队列验证 (Targeted External Validation using ST002787)
@@ -1044,7 +1018,8 @@ p_dot <- DotPlot(sc_obj_sub, features = target_genes, dot.scale = 10) +
   coord_flip() +
   scale_color_gradient2(low = "lightgrey", mid = "#F39B7F", high = "#E64B35") +
   theme_bw(base_size = 15) +
-  labs(title = "Cell-Type Specific Expression of Lipid/Inflammation Drivers",
+  # ==================== 修复点：降级标题 ====================
+  labs(title = "Cell-Type Specific Expression of Lipid/Inflammation Correlates",
        x = "Target Genes", y = "TME Cell Types") +
   theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 16),
         axis.text.x = element_text(angle = 45, hjust = 1, face = "bold", color = "black"),
@@ -1076,14 +1051,14 @@ cat("\n📊 正在提取细胞特异性表达的精确统计量...\n")
 # 1. 直接从 Seurat 的 DotPlot 函数中“白嫖”底层计算好的数据
 dot_data <- DotPlot(sc_obj_sub, features = c("PTGS2", "SOAT1", "PLA2G4A"))$data
 
-# 2. 清洗数据并美化列名
+# 2. 清洗数据并美化列名 (修复底层包冲突)
 sc_stats <- dot_data %>%
-  rename(Gene = features.plot, 
-         CellType = id, 
-         AvgExpression_Scaled = avg.exp.scaled, 
-         Percent_Expressed = pct.exp) %>%
+  dplyr::rename(Gene = features.plot, 
+                CellType = id, 
+                AvgExpression_Scaled = avg.exp.scaled, 
+                Percent_Expressed = pct.exp) %>%
   dplyr::select(Gene, CellType, AvgExpression_Scaled, Percent_Expressed) %>%
-  arrange(Gene, desc(AvgExpression_Scaled))
+  dplyr::arrange(Gene, dplyr::desc(AvgExpression_Scaled))
 
 # 3. 导出为完美的 Supplementary Table 2
 write.csv(sc_stats, "Table_S2_SingleCell_Expression_Stats.csv", row.names = FALSE)
@@ -1092,9 +1067,9 @@ cat("✅ 完美！底层统计数据已成功导出为: Table_S2_SingleCell_Expr
 # 4. 打印核心破局点，供你在聊天框发给我！
 cat("\n======================================================\n")
 cat("🔥 【请把以下内容复制发给我】 PTGS2 (COX-2) 的核心宿主是谁？\n")
-print(head(sc_stats %>% filter(Gene == "PTGS2"), 4))
+print(head(sc_stats %>% dplyr::filter(Gene == "PTGS2"), 4))
 cat("\n🔥 SOAT1 的核心宿主是谁？\n")
-print(head(sc_stats %>% filter(Gene == "SOAT1"), 4))
+print(head(sc_stats %>% dplyr::filter(Gene == "SOAT1"), 4))
 cat("======================================================\n")
 
 # ==============================================================================
