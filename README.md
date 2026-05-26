@@ -1,16 +1,16 @@
 # Machine Learning-Driven Fecal Lipidomic Trajectory (FL-MRS)
 
-[![Journal](https://img.shields.io/badge/Submitted_to-Computers_in_Biology_and_Medicine-blue.svg)]()
+[![Journal](https://img.shields.io/badge/Submitted_to-BMC_Gastroenterology-blue.svg)]()
 [![Language](https://img.shields.io/badge/Language-R_4.3.1-blue.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)]()
 
 This repository contains the official computational framework and reproducible analytical scripts for the manuscript:  
-**"Machine Learning Analysis of Fecal Lipidomics Suggests a COX-2/CE(20:4)-Associated Signature in Colorectal Adenoma-Carcinoma Transformation."**
+**"Machine Learning-Driven Fecal Lipidomic Trajectory Identifies the COX-2/CE(20:4) Axis as a Key Early Molecular Correlate of Colorectal Adenoma-Carcinoma Transformation"**
 
 ## 📌 Project Overview
 Accurately stratifying the malignant potential of histologically benign colorectal adenomas remains a major clinical challenge. To address this, we developed an **Extreme-Phenotype Machine Learning Framework** that establishes a robust diagnostic baseline by deliberately excluding transitional adenoma stages during the model training phase. 
 
-By projecting unseen adenomas onto this baseline and calculating the **Fecal Lipidomic Malignancy Risk Score (FL-MRS)**, we computationally characterized the underlying disease heterogeneity, revealing that **53.4% of histologically benign adenomas exhibit elevated FL-MRS scores approaching those of overt CRC patients**. 
+By projecting unseen adenomas onto this baseline and calculating the **Fecal Lipidomic Malignancy Risk Score (FL-MRS)**, we computationally characterized the underlying disease heterogeneity, revealing that **51.7% of histologically benign adenomas exhibit elevated FL-MRS scores (surpassing the strict 0.446 cutoff) approaching those of overt CRC patients**. 
 
 Integration of Explainable AI (TreeSHAP), pseudotime trajectory inference, and cross-cohort multi-omic mapping (bulk & scRNA-seq) further highlighted the **COX-2/CE(20:4) axis** as a prominent feature associated with early stromal/myeloid inflammatory changes within the Tumor Microenvironment (TME). Overall, our FL-MRS system provides a hypothesis-generating computational approach that may inform future prospective studies on early interventions, such as NSAID-based chemoprevention.
 
