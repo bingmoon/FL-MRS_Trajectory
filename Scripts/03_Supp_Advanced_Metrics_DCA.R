@@ -36,7 +36,7 @@ calib_data <- adv_df %>%
 dca_res <- dca(Outcome ~ Prob, data = adv_df, thresholds = seq(0, 1, by = 0.01))
 dca_plot_data <- as_tibble(dca_res)
 
-# --- 顶刊级联合绘图 ---
+# --- 顶刊级联合绘图 (已修复 margin 冲突) ---
 p_calib <- ggplot(calib_data, aes(x = Mean_Pred, y = Observed_Rate)) +
   geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "grey60", linewidth = 1.2) +
   geom_errorbar(aes(ymin = Observed_Rate - SE, ymax = Observed_Rate + SE), width = 0.05, color = "#2C3E50", linewidth = 1.2) +
@@ -46,7 +46,7 @@ p_calib <- ggplot(calib_data, aes(x = Mean_Pred, y = Observed_Rate)) +
   scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2), expand = c(0.02, 0.02)) +
   theme_classic(base_size = 15) +
   labs(title = "A. Calibration Curve", x = "Predicted Malignancy Probability", y = "Observed Proportion of CRC") +
-  theme(plot.title = element_text(face = "bold", size = 18, hjust = 0.5, margin = margin(b = 15)),
+  theme(plot.title = element_text(face = "bold", size = 18, hjust = 0.5, margin = ggplot2::margin(b = 15)),
         axis.title = element_text(face = "bold", color = "black"),
         axis.text = element_text(color = "black", size = 13),
         axis.line = element_line(color = "black", linewidth = 1.2),
@@ -59,7 +59,7 @@ p_dca <- ggplot(dca_plot_data, aes(x = threshold, y = net_benefit, color = label
                      labels = c("Treat None", "Treat All", "Fecal Lipidomic Risk Score")) +
   theme_classic(base_size = 15) +
   labs(title = "B. Decision Curve Analysis", x = "Threshold Probability", y = "Clinical Net Benefit", color = "") +
-  theme(plot.title = element_text(face = "bold", size = 18, hjust = 0.5, margin = margin(b = 15)),
+  theme(plot.title = element_text(face = "bold", size = 18, hjust = 0.5, margin = ggplot2::margin(b = 15)),
         axis.title = element_text(face = "bold", color = "black"),
         axis.text = element_text(color = "black", size = 13),
         axis.line = element_line(color = "black", linewidth = 1.2),
