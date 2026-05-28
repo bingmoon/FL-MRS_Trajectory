@@ -1110,3 +1110,91 @@ if (exists("test_prob") & exists("adenoma_prob") & exists("pca_df") & exists("fi
 } else {
   cat("❌ 内存中缺少前置变量，请确保主脚本 Step 4 和 Step 7 已成功运行！\n")
 }
+
+# ==========================================================
+# 独家补齐模块: 绘制 Supplementary Figure S1 (校准曲线与 DCA)
+# 核心目的: 证明模型不仅准，而且在临床上“有用”且“不偏移”
+# 输出格式: 绝对无损的 SVG 矢量图
+# ==========================================================
+suppressMessages({
+  library(ggplot2)
+  library(dplyr)
+  library(patchwork)
+  library(svglite)   # 用于输出无损 SVG 矢量图
+  # install.packages("dcurves") # 如果尚未安装此包请取消注释
+  library(dcurves)   # 计算 DCA 的金标准包
+})
+
+# 严格重置为当前脂质组学项目的专属目录，绝不污染其他项目
+setwd("/Users/bing/ST002468-ST003798")
+cat("\n📊 [系统] 目录已确认。正在生成 Supplementary Figure S1 (校准曲线与 DCA)...\n")
+
+# 1. 组装 DCA 和校准曲线所需的数据框
+# 直接继承 Step 4 中独立的测试集真实标签和预测概率
+s1_df <- data.frame(
+  Outcome = ifelse(test_data$Group == "Colorectal Cancer", 1, 0),
+  FL_MRS_Score = test_prob
+)
+
+# ---------------------------------------------------------
+# A. 绘制校准曲线 (Calibration Curve)
+# ---------------------------------------------------------
+# 将预测概率等分为 5 个区间 (Quintiles)，计算实际发生率
+calib_df <- s1_df %>%
+  mutate(Bin = ntile(FL_MRS_Score, 5)) %>%
+  group_by(Bin) %>%
+  summarise(
+    Pred_Prob = mean(FL_MRS_Score),
+    Obs_Prob = mean(Outcome),
+    SE = sqrt((Obs_Prob * (1 - Obs_Prob)) / n()),
+    .groups = 'drop'
+  )
+
+p_calib <- ggplot(calib_df, aes(x = Pred_Prob, y = Obs_Prob)) +
+  # 完美的理想对角线
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "grey50", linewidth = 1) +
+  # 误差棒
+  geom_errorbar(aes(ymin = Obs_Prob - SE, ymax = Obs_Prob + SE), width = 0.03, color = "black", linewidth = 0.8) +
+  # 实际观测点
+  geom_line(color = "#E7298A", linewidth = 1.2) +
+  geom_point(size = 4.5, shape = 21, fill = "#E7298A", color = "black", stroke = 1.2) +
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1)) +
+  theme_bw(base_size = 15) +
+  labs(title = "A. Calibration Curve",
+       subtitle = "Agreement between predicted and observed risk",
+       x = "Predicted Probability (FL-MRS)",
+       y = "Observed Proportion of CRC") +
+  theme(plot.title = element_text(face = "bold", size = 16),
+        plot.subtitle = element_text(color = "grey40", size = 12),
+        axis.title = element_text(face = "bold"))
+
+# ---------------------------------------------------------
+# B. 绘制临床决策曲线 (Decision Curve Analysis - DCA)
+# ---------------------------------------------------------
+# 使用 dcurves 包计算净获益 (Net Benefit)
+dca_res <- dca(Outcome ~ FL_MRS_Score, data = s1_df, thresholds = seq(0, 0.8, by = 0.01))
+
+# 核心修复点：直接使用 plot() 提取原生 ggplot 对象，切断强转导致的报错！
+p_dca <- plot(dca_res) +
+  theme_bw(base_size = 15) +
+  scale_color_manual(values = c("black", "grey60", "#E7298A")) + # 统一高亮模型的颜色
+  labs(title = "B. Decision Curve Analysis",
+       subtitle = "Clinical net benefit across threshold probabilities",
+       x = "Threshold Probability",
+       y = "Net Benefit") +
+  theme(plot.title = element_text(face = "bold", size = 16),
+        plot.subtitle = element_text(color = "grey40", size = 12),
+        axis.title = element_text(face = "bold"),
+        legend.position = c(0.8, 0.8), # 将图例移到图内右上角
+        legend.title = element_blank(),
+        legend.background = element_rect(color = "black", fill = "white", linewidth = 0.5))
+
+# ---------------------------------------------------------
+# C. 拼图并输出 SVG 矢量图
+# ---------------------------------------------------------
+p_s1_final <- p_calib + p_dca + plot_layout(ncol = 2)
+
+# 使用 svglite 引擎输出无限放大的矢量图，完美适配 Word 插入
+ggsave("Figure_S1_Calibration_DCA.svg", p_s1_final, width = 12, height = 6, device = "svg")
+
+cat("✅ 完美！缺失的 Figure S1 矢量图已补齐并保存至 ST002468-ST003798 目录: Figure_S1_Calibration_DCA.svg\n")
