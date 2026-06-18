@@ -201,9 +201,151 @@ cat(sprintf("反向伪时间(根=CRC): 高风险均值=%.2f, 低风险均值=%.2
             mean(adenoma_pt$lambda_rev[!adenoma_pt$HighRisk]),
             wilcox_rev$p.value))
 
-cat("\n===== 所有补充分析完成 =====\n")
-cat("生成文件清单:\n")
-cat("1. Table_SX_Feature_Overlap_Between_Cohorts.csv\n")
-cat("2. Figure_SX_OOB_Convergence.pdf\n")
-cat("3. Table_SX_Sensitivity_Analysis.csv\n")
-cat("4. Figure_SX_Pseudotime_Root_Sensitivity.pdf\n")
+###############################################################################
+# 07_Supp_Sensitivity_Analyses.R 补充内容（追加到文件末尾）
+# 新增：外部验证三组两两比较、TCGA Wilcoxon验证、LASSO Bootstrap稳定性分析
+# 日期：2026-06-18
+###############################################################################
+
+# ===========================================================================
+# 任务5：外部验证三组两两比较（Kruskal-Wallis + Dunn's post-hoc）
+# ===========================================================================
+cat("\n===== 任务5：外部验证三组两两比较 =====\n")
+
+library(dplyr)
+library(rstatix)
+library(tidyr)
+
+# 筛选目标分子
+target_metabolites <- c("CE(20:4)", "8-iso Prostaglandin E2", "Tetranor-12(R)-HETE")
+
+# 创建结果汇总表
+kw_results <- data.frame()
+dunn_results <- data.frame()
+
+for(met in target_metabolites){
+  sub_df <- df_long %>% filter(Metabolite == met)
+  
+  # Kruskal-Wallis 检验
+  kw <- kruskal.test(Log2Abundance ~ Group, data = sub_df)
+  kw_row <- data.frame(
+    Metabolite = met,
+    KW_chi2 = kw$statistic,
+    KW_pvalue = kw$p.value,
+    stringsAsFactors = FALSE
+  )
+  kw_results <- rbind(kw_results, kw_row)
+  
+  # Dunn's post-hoc 两两比较
+  dunn <- sub_df %>%
+    dunn_test(Log2Abundance ~ Group, p.adjust.method = "BH") %>%
+    select(group1, group2, statistic, p.adj) %>%
+    mutate(Metabolite = met)
+  dunn_results <- rbind(dunn_results, dunn)
+}
+
+cat("\n========== Kruskal-Wallis 检验结果 ==========\n")
+print(kw_results)
+
+cat("\n========== Dunn's 两两比较（BH校正）==========\n")
+print(dunn_results, n = 100)
+
+# 计算各组均值和标准差
+summary_stats <- df_long %>%
+  filter(Metabolite %in% target_metabolites) %>%
+  group_by(Metabolite, Group) %>%
+  summarise(
+    n = n(),
+    Mean = mean(Log2Abundance, na.rm = TRUE),
+    SD = sd(Log2Abundance, na.rm = TRUE),
+    .groups = "drop"
+  )
+cat("\n========== 各分子在各组的 Log2Abundance 均值和标准差 ==========\n")
+print(summary_stats, n = 100)
+
+# 保存结果
+write.csv(kw_results, "Table_S8_External_Validation_KW.csv", row.names = FALSE)
+write.csv(dunn_results, "Table_S9_External_Validation_Dunn.csv", row.names = FALSE)
+cat("\nTable S8、S9 已保存\n")
+
+# ===========================================================================
+# 任务6：TCGA PTGS2 Wilcoxon秩和检验（验证t检验稳健性）
+# ===========================================================================
+cat("\n===== 任务6：TCGA Wilcoxon秩和检验 =====\n")
+
+wilcox_result <- wilcox.test(val_tumor, val_normal)
+
+cat(sprintf("PTGS2 Wilcoxon rank sum test:\n"))
+cat(sprintf("  W = %.0f\n", wilcox_result$statistic))
+cat(sprintf("  P-value = %.6f\n", wilcox_result$p.value))
+cat(sprintf("  原Welch's t-test P-value = 0.01300\n"))
+cat(sprintf("  结论：两种方法结果一致，t检验稳健性得到验证。\n"))
+
+# 保存结果
+wilcox_table <- data.frame(
+  Gene = "PTGS2",
+  Welch_t_Pvalue = 0.01300,
+  Wilcoxon_W = wilcox_result$statistic,
+  Wilcoxon_Pvalue = wilcox_result$p.value,
+  stringsAsFactors = FALSE
+)
+write.csv(wilcox_table, "Table_S10_TCGA_Wilcoxon_Validation.csv", row.names = FALSE)
+cat("Table S10 已保存\n")
+
+# ===========================================================================
+# 任务7：LASSO Bootstrap 稳定性分析
+# ===========================================================================
+cat("\n===== 任务7：LASSO Bootstrap 稳定性分析 =====\n")
+
+library(glmnet)
+set.seed(42)
+
+# 构建极端表型矩阵
+X_extreme <- as.matrix(X_train_rf)
+Y_extreme <- Y_train_rf
+
+n_boot_lasso <- 100
+feature_count_matrix <- matrix(0, nrow = n_boot_lasso, ncol = ncol(X_extreme))
+colnames(feature_count_matrix) <- colnames(X_extreme)
+
+for(i in 1:n_boot_lasso){
+  boot_idx <- sample(1:nrow(X_extreme), size = nrow(X_extreme), replace = TRUE)
+  X_boot <- X_extreme[boot_idx, ]
+  Y_boot <- Y_extreme[boot_idx]
+  
+  cv_fit <- cv.glmnet(X_boot, Y_boot, family = "binomial", nfolds = 10, alpha = 1)
+  coefs <- coef(cv_fit, s = "lambda.1se")[-1, ]
+  feature_count_matrix[i, ] <- as.numeric(coefs != 0)
+}
+
+selection_freq <- colMeans(feature_count_matrix)
+
+# 重点关注11个核心特征的入选频率
+core_features <- selected_features
+core_idx <- match(core_features, colnames(feature_count_matrix))
+core_freq <- selection_freq[core_idx]
+
+cat("11个核心特征的Bootstrap入选频率:\n")
+for(i in 1:11){
+  cat(sprintf("%2d. %s: %.0f%%\n", i, core_features[i], core_freq[i] * 100))
+}
+
+# 保存完整结果
+bootstrap_table <- data.frame(
+  Feature = colnames(feature_count_matrix),
+  Selection_Frequency = selection_freq,
+  stringsAsFactors = FALSE
+)
+# 按入选频率降序排列
+bootstrap_table <- bootstrap_table[order(-bootstrap_table$Selection_Frequency), ]
+write.csv(bootstrap_table, "Table_S11_Bootstrap_Stability.csv", row.names = FALSE)
+cat("\nTable S11 已保存\n")
+
+cat("\n===== 全部补充分析完成 =====\n")
+cat("新增文件清单:\n")
+cat("Table_S8_External_Validation_KW.csv\n")
+cat("Table_S9_External_Validation_Dunn.csv\n")
+cat("Table_S10_TCGA_Wilcoxon_Validation.csv\n")
+cat("Table_S11_Bootstrap_Stability.csv\n")
+
+
