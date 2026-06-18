@@ -6,7 +6,7 @@
 
 This repository contains the complete computational pipeline for the manuscript:
 
-> Tang B, Chen Y, Yang X, Gong H. *Integrative Computational Analysis of Public Fecal Lipidomics and Transcriptomics Datasets Suggests a Candidate Association Between the COX-2/CE(20:4) Axis and Colorectal Adenoma-Carcinoma Progression.* .
+> Tang B, Chen Y, Yang X, Gong H. *Integrative Computational Analysis of Public Fecal Lipidomics and Transcriptomics Datasets Suggests a Candidate Association Between the COX-2/CE(20:4) Axis and Colorectal Adenoma-Carcinoma Progression.* 
 
 ---
 
