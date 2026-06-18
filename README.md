@@ -1,44 +1,89 @@
-# Machine Learning-Driven Fecal Lipidomic Trajectory (FL-MRS)
+# FL-MRS_Trajectory
 
-[![Journal](https://img.shields.io/badge/Submitted_to-BMC_Gastroenterology-blue.svg)]()
-[![Language](https://img.shields.io/badge/Language-R_4.3.1-blue.svg)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)]()
+**Integrative Computational Analysis of Public Fecal Lipidomics and Transcriptomics Datasets Suggests a Candidate Association Between the COX-2/CE(20:4) Axis and Colorectal Adenoma-Carcinoma Progression**
 
-This repository contains the official computational framework and reproducible analytical scripts for the manuscript:  
-**"Machine Learning-Driven Fecal Lipidomic Trajectory Identifies the COX-2/CE(20:4) Axis as a Key Early Molecular Correlate of Colorectal Adenoma-Carcinoma Transformation"**
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 📌 Project Overview
-Accurately stratifying the malignant potential of histologically benign colorectal adenomas remains a major clinical challenge. To address this, we developed an **Extreme-Phenotype Machine Learning Framework** that establishes a robust diagnostic baseline by deliberately excluding transitional adenoma stages during the model training phase. 
+This repository contains the complete computational pipeline for the manuscript:
 
-By projecting unseen adenomas onto this baseline and calculating the **Fecal Lipidomic Malignancy Risk Score (FL-MRS)**, we computationally characterized the underlying disease heterogeneity, revealing that **51.7% of histologically benign adenomas exhibit elevated FL-MRS scores (surpassing the strict 0.446 cutoff) approaching those of overt CRC patients**. 
+> Tang B, Chen Y, Yang X, Gong H. *Integrative Computational Analysis of Public Fecal Lipidomics and Transcriptomics Datasets Suggests a Candidate Association Between the COX-2/CE(20:4) Axis and Colorectal Adenoma-Carcinoma Progression.* (Prepared for submission to PLOS ONE, 2026).
 
-Integration of Explainable AI (TreeSHAP), pseudotime trajectory inference, and cross-cohort multi-omic mapping (bulk & scRNA-seq) further highlighted the **COX-2/CE(20:4) axis** as a prominent feature associated with early stromal/myeloid inflammatory changes within the Tumor Microenvironment (TME). Overall, our FL-MRS system provides a hypothesis-generating computational approach that may inform future prospective studies on early interventions, such as NSAID-based chemoprevention.
+---
 
-## 📂 Repository Structure & Reproducible Pipeline
-The analysis is strictly modularized into 6 sequential R scripts to ensure 100% reproducibility. **Please execute them in numerical order.**
+## Overview
 
-- `Scripts/`
-  - **`01_Main_Pipeline_ST003798.R`**: The core analytical engine. Executes data preprocessing, LASSO-Random Forest extreme-phenotype training, SHAP interpretation, Pseudotime trajectory inference, and cross-cohort multi-omic (TCGA & scRNA-seq) target validation. (Generates the core data-driven figures).
-  - **`02_Supp_Basic_Metrics.R`**: Calculates comprehensive diagnostic metrics (Sensitivity, Specificity, PPV, NPV) for the independent test set.
-  - **`03_Supp_Advanced_Metrics_DCA.R`**: Performs advanced clinical utility assessments, including Calibration Curves, Decision Curve Analysis (DCA), and 1,000x Bootstrap internal validation.
-  - **`04_Supp_Feature_Extraction_and_AUC_CI.R`**: Extracts the final LASSO-selected lipidomic features and rigorously computes the exact 95% Confidence Intervals (CI) for the AUC metrics to ensure absolute statistical robustness.
-  - **`05_Supp_Model_Comparisons_Table_S5.R`**: Provides algorithmic justification by comparing the Extreme-Phenotype RF framework against "Mixed" models and other mainstream classifiers (XGBoost, SVM, Logistic Regression).
-  - **`06_Supp_Final_Stats_and_TCGA_Covariates.R`**: Executes rigorous statistical evaluations, including Hartigan's dip test for adenoma bimodality, external independent AUC calculation for CE(20:4), and Age/Sex-adjusted Multivariate Logistic Regression (GLM) for TCGA cohorts.
+We developed an **extreme-phenotype machine learning framework** to analyze publicly available fecal lipidomics data and identify candidate lipidomic features associated with colorectal adenoma-carcinoma progression. The pipeline integrates:
 
-- `Data/`: Contains the core pre-processed fecal lipidomic matrices required to reproduce the machine learning framework.
+- **Fecal lipidomics** (Metabolomics Workbench: ST003798, ST002787)
+- **Bulk transcriptomics** (TCGA-COAD)
+- **Single-cell RNA-seq** (Broad Institute, c295)
 
-## 💾 Data Availability
-To facilitate immediate code reproducibility, the core lipidomic matrices are provided in the `Data/` directory:
-- `MSdata_ST003798_1.txt` (Discovery Cohort)
-- `st002787_positive_clean.txt` & `st002787_negative_clean.txt` (External Validation Cohort)
+Key outputs include a Fecal Lipidomic Malignancy Risk Score (FL-MRS), SHAP-based feature prioritization, cross-sectional pseudotime trajectory inference, and multiple sensitivity analyses.
 
-**Note on Massive Multi-Omic Data**: To comply with GitHub's file size limits (>100MB), the large-scale transcriptomic datasets are **not** hosted in this repository. They can be publicly accessed at:
-1. **Tumor Microenvironment scRNA-seq**: [Broad Institute Single Cell Portal (c295)](https://singlecell.broadinstitute.org/single_cell/study/SCP1162/human-colon-cancer-atlas-c295).
-2. **Host Transcriptomics**: TCGA-COAD bulk RNA-seq via the [GDC Data Portal](https://portal.gdc.cancer.gov/).
+**Important:** All findings are derived from publicly available retrospective data without independent experimental validation and should be regarded as hypothesis-generating.
 
-## 🛠️ Prerequisites
-The scripts were built and optimized under **R version 4.3.1**. Ensure the following core packages are installed before running the pipeline:
-```R
-install.packages(c("glmnet", "randomForest", "xgboost", "e1071", "pROC", "caret", "dcurves", "diptest", "treeshap", "princurve"))
-# For scRNA-seq spatial mapping:
-install.packages("Seurat")
+---
+
+## Repository Structure
+
+| File | Description |
+|------|-------------|
+| `01_Main_Pipeline_ST003798.R` | Main analysis pipeline: data preprocessing, LASSO feature selection, Random Forest modeling, SHAP analysis, pseudotime inference, TCGA integration, single-cell analysis |
+| `02_Supp_Basic_Metrics.R` | Supplementary: basic diagnostic performance metrics |
+| `03_Supp_Advanced_Metrics_DCA.R` | Supplementary: calibration curves and decision curve analysis |
+| `04_Supp_Feature_Extraction_and_AUC_CI.R` | Supplementary: feature extraction and bootstrap AUC confidence intervals |
+| `05_Supp_Model_Comparisons_Table_S5.R` | Supplementary: multi-model comparison (RF vs SVM vs LR vs XGBoost) |
+| `06_Supp_Final_Stats_and_TCGA_Covariates.R` | Supplementary: final summary statistics and TCGA covariate exploration |
+| `07_Supp_Sensitivity_Analyses.R` | **New** – Supplementary: sensitivity analyses including OOB convergence, missing value imputation comparison (LOD/2), feature overlap between cohorts, pseudotime root node reversal |
+
+---
+
+## Data Availability
+
+All datasets used in this study are publicly available:
+
+- **Fecal lipidomics (discovery)**: Metabolomics Workbench Study ID [ST003798](https://doi.org/10.21228/M8WR76)
+- **Fecal lipidomics (external validation)**: Metabolomics Workbench Study ID [ST002787](https://doi.org/10.21228/M85X48)
+- **Bulk transcriptomics**: TCGA-COAD via [GDC Data Portal](https://portal.gdc.cancer.gov/)
+- **Single-cell RNA-seq**: Broad Institute Single Cell Portal, [c295](https://singlecell.broadinstitute.org/single_cell/study/SCP259)
+
+---
+
+## Reproducibility
+
+All analyses were performed in **R version 4.3.1**. Required packages include:
+
+`glmnet`, `randomForest`, `pROC`, `treeshap`, `princurve`, `Seurat` (v4.4.0), `ggplot2`, `VennDiagram` (optional)
+
+To reproduce the full analysis:
+
+1. Clone this repository
+2. Download the required public datasets and place them in the appropriate directories (see individual scripts for paths)
+3. Run `01_Main_Pipeline_ST003798.R` first to generate all core objects
+4. Run supplementary scripts `02` through `07` in any order
+
+**Note:** Script `07_Supp_Sensitivity_Analyses.R` generates supplementary figures S3, S4 and tables S6, S7.
+
+---
+
+## Supplementary Materials
+
+The manuscript is accompanied by:
+
+- **Supplementary Figures (PDF):** S1–S4 (calibration/DCA, study flowchart, OOB convergence, pseudotime root sensitivity)
+- **Supplementary Tables (Excel):** S1–S7 (TCGA stats, single-cell metrics, diagnostic performance, feature coefficients, model comparison, inter-cohort feature overlap, sensitivity analysis)
+
+---
+
+## License
+
+This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Citation
+
+If you use this code or the FL-MRS framework in your research, please cite:
+Tang B, Chen Y, Yang X, Gong H. Integrative Computational Analysis of Public Fecal Lipidomics
+and Transcriptomics Datasets Suggests a Candidate Association Between the COX-2/CE(20:4) Axis
+and Colorectal Adenoma-Carcinoma Progression. 2026. GitHub: https://github.com/bingmoon/FL-MRS_Trajectory
