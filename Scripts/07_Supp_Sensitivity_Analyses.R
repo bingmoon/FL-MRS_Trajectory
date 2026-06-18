@@ -34,7 +34,7 @@ overlap_table <- data.frame(
 )
 
 print(overlap_table)
-write.csv(overlap_table, "Table_SX_Feature_Overlap_Between_Cohorts.csv",
+write.csv(overlap_table, "Table_S6_Feature_Overlap.csv",
           row.names = FALSE)
 
 cat(sprintf("特征检出: %d / 11\n", sum(matched)))
@@ -144,7 +144,7 @@ sens_result <- data.frame(
   stringsAsFactors = FALSE
 )
 print(sens_result)
-write.csv(sens_result, "Table_SX_Sensitivity_Analysis.csv", row.names = FALSE)
+write.csv(sens_result, "Table_S7_Sensitivity_Analysis.csv", row.names = FALSE)
 
 # ===========================================================================
 # 任务4：伪时间根节点翻转验证
