@@ -348,4 +348,94 @@ cat("Table_S9_External_Validation_Dunn.csv\n")
 cat("Table_S10_TCGA_Wilcoxon_Validation.csv\n")
 cat("Table_S11_Bootstrap_Stability.csv\n")
 
+# ===== 一次性生成完整 Table S1（含 Shapiro-Wilk） =====
+library(SummarizedExperiment)
 
+# 1. 提取表达矩阵和样本信息
+expr <- assay(tcga_data, 1)            # 表达矩阵
+cd <- colData(tcga_data)              # 样本注释
+rd <- rowData(tcga_data)              # 基因注释
+
+# 2. 找出正常和肿瘤样本的列索引
+sample_type <- cd$sample_type
+normal_idx <- grep("Solid Tissue Normal", sample_type)  # TCGA 正常组织常见标识
+tumor_idx  <- grep("Primary Tumor", sample_type)        # 原发肿瘤
+
+# 如果上面匹配不准确，直接用 shortLetterCode
+if(length(normal_idx) == 0){
+  normal_idx <- which(cd$shortLetterCode == "NT")
+  tumor_idx  <- which(cd$shortLetterCode == "TP")
+}
+
+cat(sprintf("正常样本数: %d, 肿瘤样本数: %d\n", length(normal_idx), length(tumor_idx)))
+
+# 3. 构建基因名到矩阵行的映射
+# 常见情况：行名是 Ensembl ID，rowData 里有 gene_name 列
+gene_names <- NULL
+if("gene_name" %in% colnames(rd)){
+  gene_names <- rd$gene_name
+} else if("SYMBOL" %in% colnames(rd)){
+  gene_names <- rd$SYMBOL
+} else if("external_gene_name" %in% colnames(rd)){
+  gene_names <- rd$external_gene_name
+} else {
+  # 最后尝试直接用行名（可能已经是基因符号）
+  gene_names <- rownames(expr)
+}
+
+# 确保是字符向量
+gene_names <- as.character(gene_names)
+
+# 4. 要查询的三个基因
+target_genes <- c("SOAT1", "PTGS2", "PLA2G4A")
+
+# 5. 计算每个基因的统计量
+result_list <- lapply(target_genes, function(gene){
+  idx <- which(gene_names == gene)
+  if(length(idx) == 0){
+    return(NULL)
+  }
+  # 提取表达值（假设是 log2(TPM+1) 或类似数值）
+  normal_expr <- as.numeric(expr[idx, normal_idx])
+  tumor_expr  <- as.numeric(expr[idx, tumor_idx])
+  
+  mean_n <- mean(normal_expr, na.rm = TRUE)
+  mean_t <- mean(tumor_expr, na.rm = TRUE)
+  log2fc <- mean_t - mean_n
+  
+  tt <- t.test(tumor_expr, normal_expr)
+  sw_n <- shapiro.test(normal_expr)
+  sw_t <- shapiro.test(tumor_expr)
+  
+  sig <- ifelse(tt$p.value < 0.001, "***",
+                ifelse(tt$p.value < 0.01, "**",
+                       ifelse(tt$p.value < 0.05, "*", "ns")))
+  
+  data.frame(
+    Gene = gene,
+    Mean_Normal = round(mean_n, 3),
+    Mean_Tumor = round(mean_t, 3),
+    Log2FC = round(log2fc, 3),
+    P_value = signif(tt$p.value, 4),
+    Significance = sig,
+    Shapiro_W_Normal = round(sw_n$statistic, 5),
+    Shapiro_P_Normal = signif(sw_n$p.value, 4),
+    Shapiro_W_Tumor = round(sw_t$statistic, 5),
+    Shapiro_P_Tumor = signif(sw_t$p.value, 4),
+    stringsAsFactors = FALSE
+  )
+})
+
+# 6. 合并结果，移除未匹配的基因
+final_table <- do.call(rbind, result_list[!sapply(result_list, is.null)])
+
+if(nrow(final_table) == 0){
+  cat("错误：没有匹配到任何基因。请手动检查表达矩阵行名或 rowData 中的基因名列名。\n")
+} else {
+  cat("\n===== 完整 Table S1 =====\n")
+  print(final_table)
+  
+  # 保存
+  write.csv(final_table, "Table_S1_TCGA_Validation_Stats.csv", row.names = FALSE)
+  cat("\nTable S1 已保存为 Table_S1_TCGA_Validation_Stats.csv\n")
+}
