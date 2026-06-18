@@ -44,7 +44,7 @@ cat(sprintf("特征检出: %d / 11\n", sum(matched)))
 # ===========================================================================
 cat("\n===== 任务2：OOB误差收敛 =====\n")
 
-pdf("Figure_SX_OOB_Convergence.pdf", width = 7, height = 5)
+pdf("Figure_S3.pdf", width = 7, height = 5)
 plot(rf_model, main = "Out-of-Bag Error Convergence")
 legend("topright", legend = colnames(rf_model$err.rate),
        lty = 1, col = 1:ncol(rf_model$err.rate), cex = 0.8)
@@ -179,7 +179,7 @@ wilcox_orig <- wilcox.test(lambda ~ HighRisk, data = adenoma_pt)
 wilcox_rev <- wilcox.test(lambda_rev ~ HighRisk, data = adenoma_pt)
 
 # 绘制对比箱线图
-pdf("Figure_SX_Pseudotime_Root_Sensitivity.pdf", width = 10, height = 5)
+pdf("Figure_S4.pdf", width = 10, height = 5)
 par(mfrow = c(1, 2))
 boxplot(lambda ~ HighRisk, data = adenoma_pt,
         main = "Original Pseudotime (Root = Healthy)",
