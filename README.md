@@ -34,7 +34,7 @@ Key outputs include a Fecal Lipidomic Malignancy Risk Score (FL-MRS), SHAP-based
 | `04_Supp_Feature_Extraction_and_AUC_CI.R` | Supplementary: feature extraction and bootstrap AUC confidence intervals |
 | `05_Supp_Model_Comparisons_Table_S5.R` | Supplementary: multi-model comparison (RF vs SVM vs LR vs XGBoost) |
 | `06_Supp_Final_Stats_and_TCGA_Covariates.R` | Supplementary: final summary statistics and TCGA covariate exploration |
-| `07_Supp_Sensitivity_Analyses.R` | **New** – Supplementary: sensitivity analyses including OOB convergence, missing value imputation comparison (LOD/2), feature overlap between cohorts, pseudotime root node reversal |
+| `07_Supp_Sensitivity_Analyses.R` | **New** – Supplementary: sensitivity analyses including OOB convergence, missing value imputation comparison (LOD/2), feature overlap between cohorts, pseudotime root node reversal, external validation pairwise comparisons, TCGA Wilcoxon validation, LASSO bootstrap stability analysis |
 
 ---
 
@@ -71,7 +71,7 @@ To reproduce the full analysis:
 The manuscript is accompanied by:
 
 - **Supplementary Figures (PDF):** S1–S4 (calibration/DCA, study flowchart, OOB convergence, pseudotime root sensitivity)
-- **Supplementary Tables (Excel):** S1–S7 (TCGA stats, single-cell metrics, diagnostic performance, feature coefficients, model comparison, inter-cohort feature overlap, sensitivity analysis)
+- **Supplementary Tables (Excel):** S1–S11 (TCGA stats with Shapiro-Wilk, single-cell metrics, diagnostic performance, feature coefficients, model comparison, inter-cohort feature overlap, imputation sensitivity, Kruskal-Wallis tests, Dunn's post-hoc, Wilcoxon validation, bootstrap stability)
 
 ---
 
